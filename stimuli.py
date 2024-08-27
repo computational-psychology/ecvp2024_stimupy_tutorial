@@ -1,3 +1,4 @@
+# %%
 from copy import deepcopy
 
 import numpy as np
@@ -10,11 +11,15 @@ __all__ = [
     "bullseye",
     "bullseye_high_freq",
     "bullseye_separate",
+    "cross",
     "whites",
     "whites_narrow",
     "whites_separate",
+    "whitesLong",
+    "whiteHowe",
     "strip",
     "checkerboard",
+    "checkerboard_smallest",
     "checkerboard_separate",
     "checkerboard_narrow",
 ]
@@ -39,8 +44,11 @@ def VISUAL_SIZE(target_size, n_surrounds):
     return np.array((1, ASPECT_RATIO)) * (n_surrounds * 2 + 1) * target_size
 
 
+# def radii(target_size, n_surrounds):
+#     return (np.arange(n_surrounds * 2 + 1) + 1) * (target_size / 2)
+
 def radii(target_size, n_surrounds):
-    return (np.arange(n_surrounds * 2 + 1) + 1) * (target_size / 2)
+    return (np.arange(n_surrounds + 1) + 1) * target_size - target_size/2
 
 
 def separation_mask(ppd=PPD, target_size=TARGET_SIZE, n_surrounds=N_SURROUNDS):
@@ -56,7 +64,7 @@ def separation_mask(ppd=PPD, target_size=TARGET_SIZE, n_surrounds=N_SURROUNDS):
     return separate_mask
 
 
-# %%      BULLSEYEs          #
+# %% BULLSEYEs          #
 # -------------------------- #
 def bullseye(
     ppd=PPD,
@@ -74,7 +82,7 @@ def bullseye(
     left = stimupy.stimuli.rings.rectangular_generalized(
         ppd=ppd,
         visual_size=(visual_size[0], visual_size[1] / 2),
-        radii=radii(target_size, n_surrounds)[::2],
+        radii=radii(target_size, n_surrounds)[::1],
         intensity_frames=(*intensities.values(), intensity_surround),
         target_indices=1,
         intensity_target=intensity_targets[0],
@@ -85,7 +93,7 @@ def bullseye(
     right = stimupy.stimuli.rings.rectangular_generalized(
         ppd=ppd,
         visual_size=(visual_size[0], visual_size[1] / 2),
-        radii=radii(target_size, n_surrounds)[::2],
+        radii=radii(target_size, n_surrounds)[::1],
         intensity_frames=(*intensities.values(), intensity_surround),
         target_indices=1,
         intensity_target=intensity_targets[1],
@@ -157,7 +165,7 @@ def bullseye_separate(
     return stim
 
 
-# %%         SBCs            #
+# %% SBCs            #
 # -------------------------- #
 def sbc(
     ppd=PPD,
@@ -221,7 +229,7 @@ def sbc_smallest(
     return stim
 
 
-# %%    CHECKERBOARDS        #
+# %% CHECKERBOARDS        #
 # -------------------------- #
 def checkerboard_target_cols(n_surrounds=N_SURROUNDS):
     return {
@@ -379,9 +387,9 @@ def checkerboard_smallest(
         n_surrounds=n_surrounds,
         intensity_background=intensity_background,
     )
-    inner_ring_mask = np.where(x["frame_mask"] < 4, 1, 0)
+    inner_ring_mask = np.where(x["frame_mask"] < 3, 1, 0)
     inner_ring_mask = np.where(
-        np.logical_and(x["frame_mask"] > 12, x["frame_mask"] < 15), 2, inner_ring_mask
+        np.logical_and(x["frame_mask"] > 7, x["frame_mask"] < 9), 2, inner_ring_mask
     )
     inner_ring_mask = np.where(stim["target_mask"], 0, inner_ring_mask)
 
@@ -389,6 +397,7 @@ def checkerboard_smallest(
     stim["img"] = np.where(
         np.logical_or(inner_ring_mask, stim["target_mask"]), stim["img"], intensity_background
     )
+    stim["frame_mask"] = x["frame_mask"]
 
     return stim
 
@@ -465,7 +474,7 @@ def cross_polarity(
     return stim
 
 
-# %%       WHITEs            #
+# %% WHITEs            #
 # -------------------------- #
 def whites_target_indices(N_surrounds=N_SURROUNDS):
     return {
@@ -502,6 +511,72 @@ def whites(
         intensity_bars=intensity_bars,
         intensity_target=intensity_targets,
     )
+
+
+def whitesLong(
+    ppd=PPD,
+    intensity_targets=(0.5, 0.5),
+    contexts=("black", "white"),
+    intensity_contexts=INTENSITY_CONTEXT,
+    target_size=TARGET_SIZE,
+    n_surrounds=N_SURROUNDS,
+    intensity_background=INTENSITY_BACKGROUND,
+):
+    target_indices = (
+        whites_target_indices(n_surrounds)[contexts[0]][0],
+        whites_target_indices(n_surrounds)[contexts[1]][1],
+    )
+
+    if n_surrounds % 2:
+        intensity_bars = [*intensity_contexts.values()]
+    else:
+        intensity_bars = [*reversed(intensity_contexts.values())]
+
+    return stimupy.stimuli.whites.white(
+        ppd=ppd,
+        visual_size=VISUAL_SIZE(target_size, n_surrounds),
+        bar_width=target_size,
+        target_indices=target_indices,
+        target_heights=target_size*3,
+        intensity_bars=intensity_bars,
+        intensity_target=intensity_targets,
+    )
+
+def whiteHowe(
+    ppd=PPD,
+    intensity_targets=(0.5, 0.5),
+    contexts=("black", "white"),
+    intensity_contexts=INTENSITY_CONTEXT,
+    target_size=TARGET_SIZE,
+    n_surrounds=N_SURROUNDS,
+    intensity_background=INTENSITY_BACKGROUND,
+):
+    stim1 = whites(
+        ppd=ppd,
+        intensity_targets=intensity_targets,
+        contexts=contexts,
+        intensity_contexts=intensity_contexts,
+        target_size=target_size,
+        n_surrounds=n_surrounds,
+        intensity_background=intensity_background,
+    )
+    
+    stim2 = whitesLong(
+        ppd=ppd,
+        intensity_targets=intensity_targets,
+        contexts=contexts,
+        intensity_contexts=intensity_contexts,
+        target_size=target_size,
+        n_surrounds=n_surrounds,
+        intensity_background=intensity_background,
+    )
+    
+    stim2["img"] = np.where(
+        (stim1["target_mask"] == 0) * (stim2["target_mask"] != 0),
+        stimupy.utils.flip_dict(stim1)["img"],
+        stim2["img"],
+        )
+    return stim2
 
 
 def whites_narrow(
@@ -604,7 +679,7 @@ def whites_separate(
     return stim
 
 
-# %%        STRIP            #
+# %% STRIP            #
 # -------------------------- #
 def strip(
     ppd=PPD,
@@ -669,8 +744,7 @@ def gen_all(
 
 
 if __name__ == "__main__":
-    stim = cross_polarity()
-    stimupy.utils.plot_stim(stim)
-    # s = gen_all(contexts=("black", "white"), n_surrounds=N_SURROUNDS)
-
-    # stimupy.utils.plot_stimuli(s)
+    # stim = cross_polarity()
+    # stimupy.utils.plot_stim(stim)
+    s = gen_all(contexts=("black", "white"), n_surrounds=N_SURROUNDS)
+    stimupy.utils.plot_stimuli(s)
