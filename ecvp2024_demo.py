@@ -7,14 +7,14 @@ from PIL import Image
 import numpy as np
 from hrl import HRL
 import stimuli
-from stimupy.utils import pad_dict_to_shape, flip_dict
+from stimupy.utils import pad_dict_to_shape, flip_dict, stack_dicts
 
 
 # %% Prepare
 WIDTH, HEIGHT = 1920, 1080             # monitor specs
 coords = [WIDTH / 2.0, HEIGHT / 2.0]   # center coords
 rate = 60                              # frame rate
-nframes = int(1.5 * rate)              # duration of transitions in frames
+nframes = int(1. * rate)              # duration of transitions in frames
 fade = np.linspace(0, 1, nframes)      # linear fading
 
 # Create HRL object
@@ -100,10 +100,19 @@ s15 = pad_dict_to_shape(s15, shape=(768, 1024), pad_value=stimuli.INTENSITY_BACK
 s16 = stimuli.whiteHowe()
 s16 = pad_dict_to_shape(s16, shape=(768, 1024), pad_value=stimuli.INTENSITY_BACKGROUND)
 
+sStack1 = stack_dicts(stack_dicts(s3, s7, keys="img"), s10, keys="img")
+sStack2 = stack_dicts(stack_dicts(s14, s15, keys="img"), s16, keys="img")
+sStack = stack_dicts(sStack1, sStack2, "vertical", keys="img")
+
+
 
 # %% Functions
 def starter():
     stimTex = presentStim(s0)
+    return stimTex
+
+def finisher():
+    stimTex = presentStim(sStack["img"][::2, ::2])
     return stimTex
 
 ############# SBCs
@@ -243,7 +252,7 @@ if __name__ == '__main__':
         cross, checkSmall, check, checkFull,                   # checkerboard
         cross2, crossPol, white, whiteFull, whiteLong,         # Whites
         whiteHowe, sbcSmall,                                   # return
-        starter,
+        finisher, starter,
         ]
     idx = 0
     
@@ -257,13 +266,15 @@ if __name__ == '__main__':
         if btn == 'Space':
             break
         
-        elif btn == 'Right' and idx < (len(stimFuncs)-1):
+        elif btn == 'Right':
             idx += 1
+            idx = idx % (len(stimFuncs)-1)
             stimTex.delete()
             stimTex = stimFuncs[idx]()
             
-        elif btn == 'Left' and idx > 0:
+        elif btn == 'Left':
             idx -= 1
+            idx = idx % (len(stimFuncs)-1)
             stimTex.delete()
             stimTex = stimFuncs[idx]()
 
